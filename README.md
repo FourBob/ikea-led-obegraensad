@@ -35,6 +35,8 @@ Turn your OBEGRÄNSAD LED Wall Lamp into a live drawing canvas
   - Firework
   - DDP
   - Pong Clock
+  - Arcade Sprites (Space Invaders fly-by)
+  - Tetris (Demo) with simple AI
 
 </details>
 
@@ -106,6 +108,19 @@ code .
 
 6. **Upload to ESP32**
    - Click `PlatformIO Upload` (bottom right) to upload the firmware to the ESP32.
+
+### New Plugins
+
+- Arcade Sprites
+  - Shows 2 classic-inspired invader sprites at a time (from a set of 5), slowly flying from right to left
+  - Spawns are always fully visible (no clipping top/bottom) and avoid starting overlaps
+  - Start bands (top/bottom) are randomized at boot so the initial scene varies
+- Tetris (Demo)
+  - Simple AI picks placements to avoid holes and keep stack low; line clears with blink and collapse
+  - Game restarts automatically when blocks reach the hidden top rows
+  - Manual demo control via WebSocket events (optional): rotate/left/right/softDrop/hardDrop
+  - First “next piece” is randomized at boot for variety
+
 
 ### Configuring WiFi with WiFi manager
 
@@ -326,7 +341,7 @@ An example configuration for an automation to set the brightness based on the su
 
 # Plugin Scheduler
 
-It is possible to switch between plugins automatically.  
+It is possible to switch between plugins automatically.
 You can define your schedule in the Web UI or just send an API call.
 
 ### Set Schedule
