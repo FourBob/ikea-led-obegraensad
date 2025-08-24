@@ -1,4 +1,6 @@
 #pragma once
+#include "secrets.h"
+
 
 // disable if you do not want to have online functionality
 #define ENABLE_SERVER
@@ -36,7 +38,9 @@
 #define ROWS 16
 
 // set your city or coords (https://github.com/chubin/wttr.in)
+#ifndef WEATHER_LOCATION
 #define WEATHER_LOCATION "Hamburg"
+#endif
 
 // name of WiFi created by the device if no known WiFi is available
 #define WIFI_MANAGER_SSID "IKEA"

@@ -91,6 +91,7 @@ void PluginManager::setActivePluginById(int pluginId)
         if (plugin->getId() == pluginId)
         {
             setActivePlugin(plugin->getName());
+            break;
         }
     }
 }

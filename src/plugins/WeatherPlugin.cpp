@@ -7,7 +7,7 @@ WiFiClient wiFiClient;
 
 void WeatherPlugin::setup()
 {
-    // loading screen
+    // Show loading indicator once; actual data fetched by WeatherService
     Screen.clear();
     currentStatus = LOADING;
     Screen.setPixel(4, 7, 1);
@@ -16,82 +16,72 @@ void WeatherPlugin::setup()
     Screen.setPixel(8, 7, 1);
     Screen.setPixel(10, 7, 1);
     Screen.setPixel(11, 7, 1);
-    this->lastUpdate = millis();
-    this->update();
     currentStatus = NONE;
 }
 
 void WeatherPlugin::loop()
 {
-    if (millis() >= this->lastUpdate + (1000 * 60 * 30))
-    {
-        this->update();
-        this->lastUpdate = millis();
-        Serial.println("updating weather");
-    };
+    // No background networking here; WeatherService manages updates.
+    // We just render based on cached data.
+    update();
 }
 
 void WeatherPlugin::update()
 {
-    String weatherApiString = "https://wttr.in/" + String(WEATHER_LOCATION) + "?format=j2&lang=en";
-#ifdef ESP32
-    http.begin(weatherApiString);
-#endif
-#ifdef ESP8266
-    http.begin(wiFiClient, weatherApiString);
-#endif
+    const WeatherData &d = WeatherService::getInstance().get();
 
-    int code = http.GET();
+    int weatherIcon = 0;
+    int iconY = 1;
+    int tempY = 10;
 
-    if (code == HTTP_CODE_OK)
+    if (d.valid)
     {
-        DynamicJsonDocument doc(2048);
-        deserializeJson(doc, http.getString());
-
-        int temperature = round(doc["current_condition"][0]["temp_C"].as<float>());
-        int weatherCode = doc["current_condition"][0]["weatherCode"].as<int>();
-        int weatherIcon = 0;
-        int iconY = 1;
-        int tempY = 10;
-
+        int weatherCode = d.weatherCode;
         if (std::find(thunderCodes.begin(), thunderCodes.end(), weatherCode) != thunderCodes.end())
         {
-            weatherIcon = 1;
+            weatherIcon = 1; // thunderstorm
         }
         else if (std::find(rainCodes.begin(), rainCodes.end(), weatherCode) != rainCodes.end())
         {
-            weatherIcon = 4;
+            weatherIcon = 4; // rain
         }
         else if (std::find(snowCodes.begin(), snowCodes.end(), weatherCode) != snowCodes.end())
         {
-            weatherIcon = 5;
+            weatherIcon = 4; // map snow to rain icon (no snow icon available)
         }
         else if (std::find(fogCodes.begin(), fogCodes.end(), weatherCode) != fogCodes.end())
         {
-            weatherIcon = 6;
+            weatherIcon = 0; // map fog to cloudy
             iconY = 2;
         }
         else if (std::find(clearCodes.begin(), clearCodes.end(), weatherCode) != clearCodes.end())
         {
-            weatherIcon = 2;
+            weatherIcon = 2; // clear
             iconY = 1;
             tempY = 9;
         }
         else if (std::find(cloudyCodes.begin(), cloudyCodes.end(), weatherCode) != cloudyCodes.end())
         {
-            weatherIcon = 0;
+            weatherIcon = 0; // cloudy
             iconY = 2;
             tempY = 9;
         }
         else if (std::find(partyCloudyCodes.begin(), partyCloudyCodes.end(), weatherCode) != partyCloudyCodes.end())
         {
-            weatherIcon = 3;
+            weatherIcon = 3; // partly cloudy
             iconY = 2;
         }
 
+        if (weatherIcon < 0 || weatherIcon > 4)
+        {
+            weatherIcon = 0;
+        }
+
+        Screen.beginUpdate();
         Screen.clear();
         Screen.drawWeather(0, iconY, weatherIcon, 100);
 
+        int temperature = d.tempC;
         if (temperature >= 10)
         {
             Screen.drawCharacter(9, tempY, Screen.readBytes(degreeSymbol), 4, 50);
@@ -115,6 +105,15 @@ void WeatherPlugin::update()
             Screen.drawCharacter(9, tempY, Screen.readBytes(degreeSymbol), 4, 50);
             Screen.drawNumbers(3, tempY, {-temperature});
         }
+        Screen.endUpdate();
+    }
+    else
+    {
+        // show loading indicator if no data yet
+        Screen.beginUpdate();
+        Screen.clear();
+        Screen.drawCharacter(3, 7, Screen.readBytes(degreeSymbol), 4, 20);
+        Screen.endUpdate();
     }
 }
 

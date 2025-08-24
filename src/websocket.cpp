@@ -71,10 +71,8 @@ void onWsEvent(
       }
       else if (info->opcode == WS_TEXT)
       {
-        data[len] = 0;
-
         DynamicJsonDocument wsRequest(6144);
-        DeserializationError error = deserializeJson(wsRequest, data);
+        DeserializationError error = deserializeJson(wsRequest, (const char *)data, len);
 
         if (error)
         {

@@ -2,6 +2,8 @@
 
 #ifdef ESP32
 #include <HTTPClient.h>
+#include <WiFi.h>
+#include <WiFiClientSecure.h>
 #endif
 #ifdef ESP8266
 #include <ESP8266HTTPClient.h>
@@ -10,12 +12,10 @@
 #endif
 #include <ArduinoJson.h>
 #include "PluginManager.h"
+#include "WeatherService.h"
 class WeatherPlugin : public Plugin
 {
 private:
-  unsigned long lastUpdate = 0;
-  HTTPClient http;
-
   std::vector<int> thunderCodes = {200, 386, 389, 392, 395};
   std::vector<int> cloudyCodes = {119, 122};
   std::vector<int> partyCloudyCodes = {116};
@@ -32,8 +32,8 @@ private:
       392, 395, 230, 350};
 
 public:
-  void update();
   void setup() override;
   void loop() override;
+  void update();
   const char *getName() const override;
 };

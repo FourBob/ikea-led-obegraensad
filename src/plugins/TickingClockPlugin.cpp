@@ -24,12 +24,15 @@ void TickingClockPlugin::loop()
       std::vector<int> hh = {(timeinfo.tm_hour - timeinfo.tm_hour % 10) / 10, timeinfo.tm_hour % 10};
       std::vector<int> mm = {(timeinfo.tm_min - timeinfo.tm_min % 10) / 10, timeinfo.tm_min % 10};
 
+      Screen.beginUpdate();
       Screen.clear();
 
-      Screen.drawCharacter(2, 0, Screen.readBytes(fonts[1].data[hh[0]]), 8, Screen.getCurrentBrightness());
-      Screen.drawCharacter(9, 0, Screen.readBytes(fonts[1].data[hh[1]]), 8, Screen.getCurrentBrightness());
-      Screen.drawCharacter(2, 9, Screen.readBytes(fonts[1].data[mm[0]]), 8, Screen.getCurrentBrightness());
-      Screen.drawCharacter(9, 9, Screen.readBytes(fonts[1].data[mm[1]]), 8, Screen.getCurrentBrightness());
+      // Digits bright
+      Screen.drawCharacter(2, 0, Screen.readBytes(fonts[1].data[hh[0]]), 8, 255);
+      Screen.drawCharacter(9, 0, Screen.readBytes(fonts[1].data[hh[1]]), 8, 255);
+      Screen.drawCharacter(2, 9, Screen.readBytes(fonts[1].data[mm[0]]), 8, 255);
+      Screen.drawCharacter(9, 9, Screen.readBytes(fonts[1].data[mm[1]]), 8, 255);
+      Screen.endUpdate();
       previousMinutes = timeinfo.tm_min;
       previousHour = timeinfo.tm_hour;
     }
@@ -37,11 +40,12 @@ void TickingClockPlugin::loop()
     {
       // clear second lane
       Screen.clearRect(0, 7, 16, 2);
-      // alternating second pixel
+      // alternating second pixel (slightly darker)
+      uint8_t secBrightness = 40;
       if ((timeinfo.tm_sec * 32 / 60) % 2 == 0)
-        Screen.setPixel(timeinfo.tm_sec * 16 / 60, 7, 1, Screen.getCurrentBrightness());
+        Screen.setPixel(timeinfo.tm_sec * 16 / 60, 7, 1, secBrightness);
       else
-        Screen.setPixel(timeinfo.tm_sec * 16 / 60, 8, 1, Screen.getCurrentBrightness());
+        Screen.setPixel(timeinfo.tm_sec * 16 / 60, 8, 1, secBrightness);
 
       previousSecond = timeinfo.tm_sec;
     }

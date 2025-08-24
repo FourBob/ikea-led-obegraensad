@@ -125,7 +125,8 @@ void handleGetData(AsyncWebServerRequest *request)
         {
             for (int col = 0; col < COLS; col++)
             {
-                response->print(Screen.getRenderBuffer()[currentpos_src]);
+                uint8_t b = Screen.getRenderBuffer()[currentpos_src];
+                response->write(&b, 1);
                 currentpos_src += 1;
             }
         }

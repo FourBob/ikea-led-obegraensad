@@ -46,10 +46,11 @@ int PongClockPlugin::realRandom(int min, int max)
 
 void PongClockPlugin::drawDigits()
 {
-  drawCharacter(0, 0, Screen.readBytes(smallNumbers[(current_hour - current_hour % 10) / 10]), 4, 100);
-  drawCharacter(4, 0, Screen.readBytes(smallNumbers[current_hour % 10]), 4, 100);
-  drawCharacter(9, 0, Screen.readBytes(smallNumbers[(current_minute - current_minute % 10) / 10]), 4, 100);
-  drawCharacter(13, 0, Screen.readBytes(smallNumbers[current_minute % 10]), 4, 100);
+  // Digits very bright
+  drawCharacter(0, 0, Screen.readBytes(smallNumbers[(current_hour - current_hour % 10) / 10]), 4, 255);
+  drawCharacter(4, 0, Screen.readBytes(smallNumbers[current_hour % 10]), 4, 255);
+  drawCharacter(9, 0, Screen.readBytes(smallNumbers[(current_minute - current_minute % 10) / 10]), 4, 255);
+  drawCharacter(13, 0, Screen.readBytes(smallNumbers[current_minute % 10]), 4, 255);
 }
 
 float PongClockPlugin::degToRad(float deg)
@@ -216,7 +217,9 @@ void PongClockPlugin::loop()
     // clear screen and draw time
     if (previousHour != timeinfo.tm_hour || previousMinutes != timeinfo.tm_min)
     {
+      Screen.beginUpdate();
       drawDigits();
+      Screen.endUpdate();
     }
 
     if (!pongCelebrate)
@@ -346,16 +349,17 @@ void PongClockPlugin::loop()
 
     Screen.clearRect(0, 5, 16, 11);
 
-    // draw paddles
-    Screen.setPixel(PongClockPlugin::X_MAX - 1, getScreenIndex(255, pongPaddleLeftY) / PongClockPlugin::Y_MAX - 1, PongClockPlugin::LED_TYPE_ON, 255);
-    Screen.setPixel(PongClockPlugin::X_MAX - 1, getScreenIndex(255, pongPaddleLeftY) / PongClockPlugin::Y_MAX, PongClockPlugin::LED_TYPE_ON, 255);
-    Screen.setPixel(PongClockPlugin::X_MAX - 1, getScreenIndex(255, pongPaddleLeftY) / PongClockPlugin::Y_MAX + 1, PongClockPlugin::LED_TYPE_ON, 255);
+    // draw paddles (dim)
+    uint8_t dim = 60;
+    Screen.setPixel(PongClockPlugin::X_MAX - 1, getScreenIndex(255, pongPaddleLeftY) / PongClockPlugin::Y_MAX - 1, PongClockPlugin::LED_TYPE_ON, dim);
+    Screen.setPixel(PongClockPlugin::X_MAX - 1, getScreenIndex(255, pongPaddleLeftY) / PongClockPlugin::Y_MAX, PongClockPlugin::LED_TYPE_ON, dim);
+    Screen.setPixel(PongClockPlugin::X_MAX - 1, getScreenIndex(255, pongPaddleLeftY) / PongClockPlugin::Y_MAX + 1, PongClockPlugin::LED_TYPE_ON, dim);
 
-    Screen.setPixel(0, getScreenIndex(0, pongPaddleRightY) / PongClockPlugin::Y_MAX - 1, PongClockPlugin::LED_TYPE_ON, 255);
-    Screen.setPixel(0, getScreenIndex(0, pongPaddleRightY) / PongClockPlugin::Y_MAX, PongClockPlugin::LED_TYPE_ON, 255);
-    Screen.setPixel(0, getScreenIndex(0, pongPaddleRightY) / PongClockPlugin::Y_MAX + 1, PongClockPlugin::LED_TYPE_ON, 255);
+    Screen.setPixel(0, getScreenIndex(0, pongPaddleRightY) / PongClockPlugin::Y_MAX - 1, PongClockPlugin::LED_TYPE_ON, dim);
+    Screen.setPixel(0, getScreenIndex(0, pongPaddleRightY) / PongClockPlugin::Y_MAX, PongClockPlugin::LED_TYPE_ON, dim);
+    Screen.setPixel(0, getScreenIndex(0, pongPaddleRightY) / PongClockPlugin::Y_MAX + 1, PongClockPlugin::LED_TYPE_ON, dim);
 
-    // draw ball
+    // draw ball (dim, blinking)
     Screen.setPixel(ballX / PongClockPlugin::X_MAX, ballY / PongClockPlugin::Y_MAX, PongClockPlugin::LED_TYPE_ON, ballBrightness);
   }
 }

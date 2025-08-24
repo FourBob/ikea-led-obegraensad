@@ -16,6 +16,7 @@ void StarsPlugin::loop()
 {
   for (int fadeStep = 255; fadeStep >= 0; fadeStep -= 4)
   {
+    yield();
     for (int i = 0; i < numStars; i++)
     {
       if (stars[i].brightness > 0)
@@ -42,9 +43,11 @@ void StarsPlugin::loop()
             Screen.setPixel(stars[i].x, stars[i].y, 1, brightness);
             stars[i].lastUpdateTime = currentTime;
           }
+          yield();
         }
       }
     }
+    delay(1);
   }
 }
 

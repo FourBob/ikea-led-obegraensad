@@ -33,6 +33,7 @@ void Screen_::setBrightness(uint8_t brightness, bool shouldStore)
 
 void Screen_::setRenderBuffer(const uint8_t *renderBuffer, bool grays)
 {
+  updating_ = true;
   if (grays)
   {
     memcpy(renderBuffer_, renderBuffer, ROWS * COLS);
@@ -44,6 +45,7 @@ void Screen_::setRenderBuffer(const uint8_t *renderBuffer, bool grays)
       renderBuffer_[i] = renderBuffer[i] * 255;
     }
   }
+  updating_ = false;
 }
 
 uint8_t *Screen_::getRenderBuffer()
@@ -58,7 +60,9 @@ uint8_t Screen_::getBufferIndex(int index)
 
 void Screen_::clear()
 {
+  beginUpdate();
   memset(renderBuffer_, 0, ROWS * COLS);
+  endUpdate();
 }
 
 void Screen_::clearRect(int x, int y, int width, int height)
@@ -80,10 +84,12 @@ void Screen_::clearRect(int x, int y, int width, int height)
   }
 
   width = std::min(width, COLS - x);
+  beginUpdate();
   for (int row = y; row < y + height; row++)
   {
     memset(renderBuffer_ + (row * COLS + x), 0, width);
   }
+  endUpdate();
 }
 
 // CACHE START
@@ -180,14 +186,18 @@ void Screen_::setPixelAtIndex(uint8_t index, uint8_t value, uint8_t brightness)
 {
   if (index >= COLS * ROWS)
     return;
+  updating_ = true;
   renderBuffer_[index] = value <= 0 || brightness <= 0 ? 0 : (brightness > 255 ? 255 : brightness);
+  updating_ = false;
 }
 
 void Screen_::setPixel(uint8_t x, uint8_t y, uint8_t value, uint8_t brightness)
 {
   if (x >= COLS || y >= ROWS)
     return;
+  updating_ = true;
   renderBuffer_[y * COLS + x] = value <= 0 || brightness <= 0 ? 0 : (brightness > 255 ? 255 : brightness);
+  updating_ = false;
 }
 
 void Screen_::setCurrentRotation(int rotation, bool shouldPersist)
@@ -239,6 +249,10 @@ void Screen_::onScreenTimer()
 
 ICACHE_RAM_ATTR void Screen_::_render()
 {
+  if (updating_) {
+    // skip this frame to avoid tearing of partial digits
+    return;
+  }
   const auto buf = getRotatedRenderBuffer();
 
   // SPI data needs to be 32-bit aligned, round up before divide

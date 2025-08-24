@@ -2,13 +2,15 @@
 
 uint8_t GameOfLifePlugin::countNeighbours(int row, int col)
 {
-  int i, j;
   int count = 0;
-  for (i = row - 1; i <= row + 1; i++)
+  for (int i = row - 1; i <= row + 1; i++)
   {
-    for (j = col - 1; j <= col + 1; j++)
+    for (int j = col - 1; j <= col + 1; j++)
     {
-      count += this->buffer[i * COLS + j];
+      if (i >= 0 && i < ROWS && j >= 0 && j < COLS)
+      {
+        count += this->buffer[i * COLS + j];
+      }
     }
   }
   count -= this->buffer[row * COLS + col];

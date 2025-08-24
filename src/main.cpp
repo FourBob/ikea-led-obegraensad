@@ -32,6 +32,9 @@
 #include "plugins/StarsPlugin.h"
 #include "plugins/TickingClockPlugin.h"
 #include "plugins/ArtNet.h"
+#include "plugins/TetrisDemoPlugin.h"
+#include "plugins/ArcadeSpritesPlugin.h"
+#include "WeatherService.h"
 
 #ifdef ENABLE_SERVER
 #include "plugins/AnimationPlugin.h"
@@ -166,6 +169,8 @@ void baseSetup()
   pluginManager.addPlugin(new CirclePlugin());
   pluginManager.addPlugin(new RainPlugin());
   pluginManager.addPlugin(new FireworkPlugin());
+  pluginManager.addPlugin(new TetrisDemoPlugin());
+  pluginManager.addPlugin(new ArcadeSpritesPlugin());
 
 #ifdef ENABLE_SERVER
   pluginManager.addPlugin(new BigClockPlugin());
@@ -181,8 +186,17 @@ void baseSetup()
   pluginManager.init();
   Scheduler.init();
 
+  WeatherService::getInstance().begin();
+  WeatherService::getInstance().fetchNow();
+
   btn.onPress(pressHandler).onDoublePress(pressHandler).onPressFor(pressHandler, 1000);
 }
+
+static unsigned long lastWeatherTick = 0;
+
+
+#include "WeatherService.h"
+
 
 #ifdef ESP32
 TaskHandle_t screenDrawingTaskHandle = NULL;
@@ -246,6 +260,12 @@ void loop()
     {
       Messages.scrollMessageEveryMinute();
     }
+  }
+
+  // Background weather fetch (independent of active plugin)
+  if ((taskCounter % 8) == 0)
+  {
+    WeatherService::getInstance().maybeFetch();
   }
 
   if ((taskCounter % 16) == 0)

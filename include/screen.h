@@ -11,6 +11,7 @@ class Screen_
 private:
   Screen_() = default;
 
+  volatile bool updating_ = false;
   uint8_t brightness_ = 255;
   uint8_t renderBuffer_[ROWS * COLS];
   uint8_t rotatedRenderBuffer_[ROWS * COLS];
@@ -49,6 +50,9 @@ public:
 
   uint8_t getCurrentBrightness() const;
   void setBrightness(uint8_t brightness, bool shouldStore = false);
+
+  void beginUpdate() { updating_ = true; }
+  void endUpdate() { updating_ = false; }
 
   void setRenderBuffer(const uint8_t *renderBuffer, bool grays = false);
   uint8_t *getRenderBuffer();
