@@ -34,6 +34,7 @@
 #include "plugins/ArtNet.h"
 #include "plugins/TetrisDemoPlugin.h"
 #include "plugins/ArcadeSpritesPlugin.h"
+#include "plugins/MoonPhasePlugin.h"
 #include "WeatherService.h"
 
 #ifdef ENABLE_SERVER
@@ -171,6 +172,7 @@ void baseSetup()
   pluginManager.addPlugin(new FireworkPlugin());
   pluginManager.addPlugin(new TetrisDemoPlugin());
   pluginManager.addPlugin(new ArcadeSpritesPlugin());
+  pluginManager.addPlugin(new MoonPhasePlugin());
 
 #ifdef ENABLE_SERVER
   pluginManager.addPlugin(new BigClockPlugin());

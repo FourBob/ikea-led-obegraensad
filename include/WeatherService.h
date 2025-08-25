@@ -18,6 +18,10 @@
 struct WeatherData {
   int tempC = 0;
   int weatherCode = 0;
+  // Moon data from wttr.in weather[0].astronomy[0]
+  int moonIllum = -1;              // illumination percent (0..100), -1 if unknown
+  char moonPhase[16] = {0};        // e.g., "Waxing Crescent", truncated
+
   unsigned long timestamp = 0; // millis when fetched
   bool valid = false;
 };

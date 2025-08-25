@@ -104,10 +104,13 @@ bool WeatherService::performFetch(WeatherData &out) {
   }
 
   String payload = http.getString();
-  StaticJsonDocument<128> filter;
+  // Build a filter to only parse needed fields
+  StaticJsonDocument<192> filter;
   filter["current_condition"][0]["temp_C"] = true;
   filter["current_condition"][0]["weatherCode"] = true;
-  DynamicJsonDocument doc(512);
+  filter["weather"][0]["astronomy"][0]["moon_illumination"] = true;
+  filter["weather"][0]["astronomy"][0]["moon_phase"] = true;
+  DynamicJsonDocument doc(1024);
   auto err = deserializeJson(doc, payload, DeserializationOption::Filter(filter));
   if (err) {
     http.end();
@@ -116,6 +119,14 @@ bool WeatherService::performFetch(WeatherData &out) {
 
   out.tempC = round(doc["current_condition"][0]["temp_C"].as<float>());
   out.weatherCode = doc["current_condition"][0]["weatherCode"].as<int>();
+
+  // Moon data (optional)
+  JsonVariant astro = doc["weather"][0]["astronomy"][0];
+  if (!astro.isNull()) {
+    out.moonIllum = astro["moon_illumination"].as<int>();
+    const char* phase = astro["moon_phase"].as<const char*>();
+    if (phase) { strncpy(out.moonPhase, phase, sizeof(out.moonPhase)-1); out.moonPhase[sizeof(out.moonPhase)-1] = '\0'; }
+  }
 
   http.end();
   return true;
