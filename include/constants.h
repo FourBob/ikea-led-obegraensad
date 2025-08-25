@@ -44,7 +44,7 @@
 
 // Optional display aspect ratio (pixel height / pixel width) used by some plugins
 #ifndef DISPLAY_ASPECT_YX
-#define DISPLAY_ASPECT_YX 1.0f
+#define DISPLAY_ASPECT_YX 1.4
 #endif
 
 

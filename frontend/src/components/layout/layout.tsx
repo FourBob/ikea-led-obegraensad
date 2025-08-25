@@ -2,6 +2,7 @@ import { type Component, type JSX, Show } from "solid-js";
 
 import { useStore } from "../../contexts/store";
 import { ScreenInfo } from "../screen-info";
+import { VersionBadge } from "../version";
 
 export const Layout: Component<{
   content: JSX.Element;
@@ -25,6 +26,7 @@ export const Layout: Component<{
         <aside class="bg-white p-6 flex flex-col h-full">{props.sidebar}</aside>
         <main class="h-full overflow-auto" ref={props.ref}>
           {props.content}
+          <VersionBadge />
         </main>
       </Show>
     </div>

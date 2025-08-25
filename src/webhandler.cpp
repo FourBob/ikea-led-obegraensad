@@ -155,6 +155,15 @@ void handleGetInfo(AsyncWebServerRequest *request)
     jsonDocument["brightness"] = Screen.getCurrentBrightness();
     jsonDocument["scheduleActive"] = Scheduler.isActive;
 
+    // Build metadata
+#ifdef BUILD_TIME_STR
+    jsonDocument["buildTime"] = BUILD_TIME_STR;
+#endif
+#ifdef APP_VERSION_STR
+    jsonDocument["version"] = APP_VERSION_STR;
+#endif
+
+
     JsonArray scheduleArray = jsonDocument.createNestedArray("schedule");
     for (const auto &item : Scheduler.schedule)
     {

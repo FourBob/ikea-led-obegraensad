@@ -10,6 +10,17 @@ const ws = createReconnectingWS(
   `${import.meta.env.PROD ? `ws://${window.location.host}/` : import.meta.env.VITE_WS_URL}ws`,
 );
 
+// Send auth frame on each (re)connect if a token is provided at build time
+ws.addEventListener("open", () => {
+  try {
+    const token = (import.meta as any).env?.VITE_API_TOKEN as string | undefined;
+    if (token && token.length > 0) {
+      ws.send(JSON.stringify({ event: "auth", token }));
+    }
+  } catch (_) {}
+});
+
+
 const wsState = createWSState(ws);
 
 const connectionStatus = ["Connecting", "Connected", "Disconnecting", "Disconnected"];
@@ -27,7 +38,10 @@ const [mainStore, setStore] = createStore<Store>({
   connectionState: wsState,
   connectionStatus: connectionStatus[0],
   schedule: [],
+  buildTime: undefined as unknown as string,
+  version: undefined as unknown as string,
 });
+
 
 const actions: StoreActions = {
   setIsActiveScheduler: (isActive) => setStore("isActiveScheduler", isActive),
@@ -40,6 +54,8 @@ const actions: StoreActions = {
   setLeds: (leds) => setStore("leds", leds),
   setSystemStatus: (systemStatus: SYSTEM_STATUS) => setStore("systemStatus", systemStatus),
   setSchedule: (items: ScheduleItem[]) => setStore("schedule", items),
+  setBuildTime: (s: string) => setStore("buildTime", s),
+  setVersion: (s: string) => setStore("version", s),
   send: ws.send,
 };
 
@@ -72,6 +88,9 @@ export const StoreProvider = (props?: { value?: Store; children?: JSX.Element })
           if (json.plugin) {
             actions.setPlugin(json.plugin as number);
           }
+
+          if (json.buildTime) actions.setBuildTime(json.buildTime as string);
+          if (json.version) actions.setVersion(json.version as string);
 
           if (mainStore.plugin === 1) {
             actions.setIndexMatrix([...new Array(256)].map((_, i) => i));

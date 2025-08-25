@@ -22,6 +22,8 @@ export interface StoreActions {
   setSystemStatus: (systemStatus: SYSTEM_STATUS) => void;
   setSchedule: (items: ScheduleItem[]) => void;
   setArtnetUniverse: (artnetUniverse: number) => void;
+  setBuildTime: (s: string) => void;
+  setVersion: (s: string) => void;
   send: (message: string | ArrayBuffer) => void;
 }
 
@@ -38,6 +40,8 @@ export interface Store {
   connectionState: () => number;
   connectionStatus?: string;
   schedule: ScheduleItem[];
+  buildTime?: string;
+  version?: string;
 }
 
 export interface IToastContext {

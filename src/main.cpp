@@ -1,4 +1,6 @@
 #include <Arduino.h>
+#include "buildinfo.h"
+
 #include <BfButton.h>
 #include <SPI.h>
 
@@ -36,6 +38,9 @@
 #include "plugins/ArcadeSpritesPlugin.h"
 #include "plugins/MoonPhasePlugin.h"
 #include "WeatherService.h"
+#include "StockService.h"
+#include "plugins/StockChartPlugin.h"
+
 
 #ifdef ENABLE_SERVER
 #include "plugins/AnimationPlugin.h"
@@ -173,6 +178,7 @@ void baseSetup()
   pluginManager.addPlugin(new TetrisDemoPlugin());
   pluginManager.addPlugin(new ArcadeSpritesPlugin());
   pluginManager.addPlugin(new MoonPhasePlugin());
+  pluginManager.addPlugin(new StockChartPlugin());
 
 #ifdef ENABLE_SERVER
   pluginManager.addPlugin(new BigClockPlugin());
@@ -187,6 +193,9 @@ void baseSetup()
 
   pluginManager.init();
   Scheduler.init();
+
+  StockService::getInstance().begin();
+  StockService::getInstance().fetchNow();
 
   WeatherService::getInstance().begin();
   WeatherService::getInstance().fetchNow();
@@ -262,6 +271,12 @@ void loop()
     {
       Messages.scrollMessageEveryMinute();
     }
+
+  // Background stock fetch
+  if ((taskCounter % 64) == 0) { // ~1/16th der Weather-Frequenz
+    StockService::getInstance().maybeFetch();
+  }
+
   }
 
   // Background weather fetch (independent of active plugin)

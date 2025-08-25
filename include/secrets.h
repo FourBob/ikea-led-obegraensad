@@ -31,3 +31,5 @@
 #ifndef WTTR_CA_CERT
 #define WTTR_CA_CERT ""
 #endif
+
+#define STOCK_SYMBOL "acn.us"

@@ -5,7 +5,7 @@
 
 // Device hostname (shown in your router / mDNS, if enabled)
 #ifndef WIFI_HOSTNAME
-#define WIFI_HOSTNAME "LostDisplay"
+#define WIFI_HOSTNAME "IKEADisplay"
 #endif
 
 // ESP8266 users: define SSID/PASSWORD here (ESP32 uses WiFiManager by default)

@@ -34,6 +34,14 @@ void sendInfo()
 
   JsonArray scheduleArray = jsonDocument.createNestedArray("schedule");
   for (const auto &item : Scheduler.schedule)
+  // Build metadata
+#ifdef BUILD_TIME_STR
+  jsonDocument["buildTime"] = BUILD_TIME_STR;
+#endif
+#ifdef APP_VERSION_STR
+  jsonDocument["version"] = APP_VERSION_STR;
+#endif
+
   {
     JsonObject scheduleItem = scheduleArray.createNestedObject();
     scheduleItem["pluginId"] = item.pluginId;

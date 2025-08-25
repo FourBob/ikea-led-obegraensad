@@ -52,7 +52,11 @@ void MoonPhasePlugin::renderPhase() {
   // As large as possible visually round on a non-square panel:
   // Use full width (R=7) and compensate Y by aspect ratio (height/width)
   const int cx = 8, cy = 8, R = 7;
-  const float ASPECT_YX = DISPLAY_ASPECT_YX; // pixel height / pixel width (configurable)
+  float ASPECT_YX = DISPLAY_ASPECT_YX; // pixel height / pixel width (configurable)
+  // Adjust aspect for rotation: when rotated 90/270°, height/width swap
+  if ((Screen.currentRotation % 2) == 1 && ASPECT_YX != 0) {
+    ASPECT_YX = 1.0f / ASPECT_YX;
+  }
   const uint8_t BRIGHT_LIT = 220;
   const uint8_t BRIGHT_SHADOW = 50; // indicate non-visible part
 
