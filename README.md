@@ -2,6 +2,24 @@
 
 Turn your OBEGRÄNSAD LED Wall Lamp into a live drawing canvas
 
+## Differences from the original (Änderungen gegenüber dem Original)
+
+This repository is a fork of the original project by ph1p:
+- Original repository: https://github.com/ph1p/ikea-led-obegraensad
+
+What this fork adds/changes:
+- New plugins
+  - Arcade Sprites: 5 Space‑Invaders‑inspired sprites; exactly 2 are visible at a time; slow right‑to‑left fly‑by; spawns are always fully visible (no top/bottom clipping) and avoid starting overlaps; randomized start bands/types for variety
+  - Tetris (Demo): simple heuristic AI chooses placements (prefers low height and few holes); line clears with blink and collapse; automatic restart on overflow (blocks reach hidden top rows); optional manual control via WebSocket (rotate/left/right/softDrop/hardDrop); randomized first “next piece” at boot
+- Stability/quality improvements
+  - Tetris: fixed preview flicker at the top‑right; corrected full‑row clear and collapse
+  - Randomized starts in both plugins so they don’t always start with the same piece/sprites
+- Developer experience
+  - Added include/secrets_example.h and updated README to simplify local setup
+
+If you want the original feature set without these additions, use the upstream repository linked above.
+
+
 > **⚠ Disclaimer**: Use this code and instructions at your own risk! Improper use may damage the device.
 > **Contribute**: Have suggestions or improvements? Feel free to submit a PR or open an issue. 😊
 
