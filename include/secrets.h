@@ -23,3 +23,11 @@
 #ifndef WEATHER_UPDATE_MINUTES
 #define WEATHER_UPDATE_MINUTES 30
 #endif
+
+
+#ifndef API_TOKEN
+#define API_TOKEN ""
+#endif
+#ifndef WTTR_CA_CERT
+#define WTTR_CA_CERT ""
+#endif

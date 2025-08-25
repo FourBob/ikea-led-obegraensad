@@ -246,10 +246,10 @@ void TetrisDemoPlugin::setup() {
   resetBoard();
   // Seed nextType_ randomly for varied starts
 #ifdef ESP32
-  uint32_t r = esp_random();
-  nextType_ = r % 7;
+  nextType_ = esp_random() % 7;
 #else
-  nextType_ = (millis() & 0xFFFF) % 7;
+  static bool seeded=false; if(!seeded){ srand((unsigned)millis()); seeded=true; }
+  nextType_ = rand() % 7;
 #endif
   spawnPiece();
 }

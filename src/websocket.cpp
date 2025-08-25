@@ -3,10 +3,19 @@
 
 #ifdef ENABLE_SERVER
 
+#include <set>
+
 AsyncWebSocket ws("/ws");
+static const char* kApiToken = API_TOKEN;
+static std::set<uint32_t> wsAuthed; // client ids with auth
 
 void sendInfo()
 {
+  static unsigned long lastSent = 0;
+  unsigned long now = millis();
+  if (now - lastSent < 50) return; // throttle broadcast
+  lastSent = now;
+
   DynamicJsonDocument jsonDocument(6144);
   if (currentStatus == NONE)
   {
@@ -43,7 +52,14 @@ void sendInfo()
   }
   String output;
   serializeJson(jsonDocument, output);
-  ws.textAll(output);
+
+  if (kApiToken && strlen(kApiToken) > 0) {
+    // Send only to authorized clients
+    for (auto id : wsAuthed) ws.text(id, output);
+  } else {
+    ws.textAll(output);
+  }
+
   jsonDocument.clear();
 }
 
@@ -57,21 +73,32 @@ void onWsEvent(
 {
   if (type == WS_EVT_CONNECT)
   {
+    // Simple token check via query string: ws://host/ws?token=...
+    if (kApiToken && strlen(kApiToken) > 0) {
+      // AsyncWebSocket unfortunately doesn't expose URL here; require an initial auth message instead
+      // Client must send a JSON: {"event":"auth","token":"..."} as the first message
+    }
     sendInfo();
   }
 
   if (type == WS_EVT_DATA)
   {
     AwsFrameInfo *info = (AwsFrameInfo *)arg;
+      // Auth gate: require first text frame to be auth when token is set
+      if (kApiToken && strlen(kApiToken) > 0 && wsAuthed.find(client->id()) == wsAuthed.end()) {
+        // Peek minimal JSON: allow only auth as first message
+      }
+
     if (info->final && info->index == 0 && info->len == len)
     {
       if (info->opcode == WS_BINARY && currentStatus == WSBINARY && info->len == 256)
       {
+        if (kApiToken && strlen(kApiToken) > 0 && wsAuthed.find(client->id()) == wsAuthed.end()) return;
         Screen.setRenderBuffer(data, true);
       }
       else if (info->opcode == WS_TEXT)
       {
-        DynamicJsonDocument wsRequest(6144);
+        DynamicJsonDocument wsRequest(1024);
         DeserializationError error = deserializeJson(wsRequest, (const char *)data, len);
 
         if (error)
@@ -80,38 +107,47 @@ void onWsEvent(
           Serial.println(error.f_str());
           return;
         }
-        else
+        // If token is set, require first message to be {"event":"auth","token":"..."}
+        if (kApiToken && strlen(kApiToken) > 0 && wsAuthed.find(client->id()) == wsAuthed.end()) {
+          const char* ev = wsRequest["event"] | "";
+          const char* tok = wsRequest["token"] | "";
+          if (strcmp(ev, "auth") != 0 || String(tok) != String(kApiToken)) {
+            client->close(1008, "Unauthorized");
+            return;
+          }
+          wsAuthed.insert(client->id());
+          return; // don't process further for auth frame
+        }
+
+        pluginManager.getActivePlugin()->websocketHook(wsRequest);
+
+        const char *event = wsRequest["event"];
+
+        if (!strcmp(event, "plugin"))
         {
-          pluginManager.getActivePlugin()->websocketHook(wsRequest);
+          int pluginId = wsRequest["plugin"];
 
-          const char *event = wsRequest["event"];
-
-          if (!strcmp(event, "plugin"))
-          {
-            int pluginId = wsRequest["plugin"];
-
-            Scheduler.clearSchedule();
-            pluginManager.setActivePluginById(pluginId);
-            sendInfo();
-          }
-          else if (!strcmp(event, "persist-plugin"))
-          {
-            pluginManager.persistActivePlugin();
-          }
-          else if (!strcmp(event, "rotate"))
-          {
-            bool isRight = (bool)!strcmp(wsRequest["direction"], "right");
-            Screen.setCurrentRotation((Screen.currentRotation + (isRight ? 1 : 3)) % 4, true);
-          }
-          else if (!strcmp(event, "info"))
-          {
-            sendInfo();
-          }
-          else if (!strcmp(event, "brightness"))
-          {
-            uint8_t brightness = wsRequest["brightness"].as<uint8_t>();
-            Screen.setBrightness(brightness, true);
-          }
+          Scheduler.clearSchedule();
+          pluginManager.setActivePluginById(pluginId);
+          sendInfo();
+        }
+        else if (!strcmp(event, "persist-plugin"))
+        {
+          pluginManager.persistActivePlugin();
+        }
+        else if (!strcmp(event, "rotate"))
+        {
+          bool isRight = (bool)!strcmp(wsRequest["direction"], "right");
+          Screen.setCurrentRotation((Screen.currentRotation + (isRight ? 1 : 3)) % 4, true);
+        }
+        else if (!strcmp(event, "info"))
+        {
+          sendInfo();
+        }
+        else if (!strcmp(event, "brightness"))
+        {
+          uint8_t brightness = wsRequest["brightness"].as<uint8_t>();
+          Screen.setBrightness(brightness, true);
         }
       }
     }

@@ -37,3 +37,14 @@
 #define WEATHER_UPDATE_MINUTES 30
 #endif
 
+
+// Optional API token for HTTP/WS access control
+#ifndef API_TOKEN
+#define API_TOKEN "" // leave empty to disable authentication
+#endif
+
+// Optional CA certificate for wttr.in TLS (PEM). If empty, client will skip verification (insecure)
+#ifndef WTTR_CA_CERT
+#define WTTR_CA_CERT ""
+#endif
+

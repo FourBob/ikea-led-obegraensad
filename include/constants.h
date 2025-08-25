@@ -42,6 +42,12 @@
 #define WEATHER_LOCATION "Hamburg"
 #endif
 
+// Optional display aspect ratio (pixel height / pixel width) used by some plugins
+#ifndef DISPLAY_ASPECT_YX
+#define DISPLAY_ASPECT_YX 1.0f
+#endif
+
+
 // name of WiFi created by the device if no known WiFi is available
 #define WIFI_MANAGER_SSID "IKEA"
 

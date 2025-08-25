@@ -39,11 +39,20 @@ void WeatherService::setIntervalMinutes(uint16_t minutes) {
 
 void WeatherService::maybeFetch() {
   unsigned long now = millis();
-  if (nextRetryAt && now < nextRetryAt) return; // backoff in effect
+  // If backoff is active and due, try immediately irrespective of interval
+  if (nextRetryAt && now >= nextRetryAt) {
+    bool ok = fetchNow();
+    if (ok) { retryCount = 0; nextRetryAt = 0; }
+    else {
+      // increase backoff up to ~15m
+      retryCount = min<uint8_t>(retryCount + 1, 4);
+      nextRetryAt = now + (60000UL << (retryCount - 1));
+    }
+    return;
+  }
   if (now - lastFetch_ >= intervalMs_) {
     bool ok = fetchNow();
     if (!ok) {
-      // exponential backoff: 1m, 2m, 4m (cap 15m)
       retryCount = min<uint8_t>(retryCount + 1, 4);
       nextRetryAt = now + (60000UL << (retryCount - 1));
     } else {
@@ -81,7 +90,8 @@ bool WeatherService::performFetch(WeatherData &out) {
 
 #ifdef ESP32
   WiFiClientSecure client;
-  client.setInsecure();
+  if (strlen(WTTR_CA_CERT) > 0) client.setCACert(WTTR_CA_CERT);
+  else client.setInsecure();
   HTTPClient http;
   http.begin(client, url);
 #endif

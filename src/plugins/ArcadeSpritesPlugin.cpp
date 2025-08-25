@@ -12,6 +12,16 @@ static std::array<uint8_t,8> makeRowMask(const uint8_t rows8[8]){
   return r;
 }
 
+// unified RNG helper
+static inline uint32_t urand(){
+#ifdef ESP32
+  return esp_random();
+#else
+  static bool seeded=false; if(!seeded){ srand((unsigned)millis()); seeded=true; }
+  return ((uint32_t)rand()<<16) ^ (uint32_t)rand();
+#endif
+}
+
 void ArcadeSpritesPlugin::initSprites(){
   sprites_.clear();
   // 5 Space-Invaders-inspirierte Sprites (6x6 bis 8x8), je 2 Frames
@@ -46,11 +56,11 @@ void ArcadeSpritesPlugin::respawn(Entity& e){
   e.frame=0; e.nextFrameAt=millis()+220;
   e.bright = 240; // klar erkennbar
   e.pattern = 0; // nur Fly-by
-  e.def = &sprites_[rand()%sprites_.size()];
+  e.def = &sprites_[urand()%sprites_.size()];
   int maxY = 16 - e.def->h; if (maxY < 0) maxY = 0;
-  e.y = (float)(rand() % (maxY + 1));
-  e.x = 16 + (rand()%8);
-  e.vx = -(0.05f + (rand()%50)/1000.0f);
+  e.y = (float)(urand() % (maxY + 1));
+  e.x = 16 + (urand()%8);
+  e.vx = -(0.05f + (urand()%50)/1000.0f);
   e.vy = 0.0f;
   e.phase = 0.0f; e.amp = 0.0f;
 }

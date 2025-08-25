@@ -12,30 +12,43 @@ void initWebServer()
   DefaultHeaders::Instance().addHeader("Access-Control-Allow-Credentials", "true");
   DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
 
+  // Simple bearer token guard: if API_TOKEN is set, verify Authorization header
+  auto authGuard = [](AsyncWebServerRequest *request) -> bool {
+    #if defined(API_TOKEN)
+    if (strlen(API_TOKEN) > 0) {
+      if (!request->hasHeader("Authorization")) return false;
+      const AsyncWebHeader* h = request->getHeader("Authorization");
+      String expect = String("Bearer ") + API_TOKEN;
+      if (!h || h->value() != expect) return false;
+    }
+    #endif
+    return true;
+  };
+
   server.on("/", HTTP_GET, startGui);
-  server.onNotFound([](AsyncWebServerRequest *request)
+  server.onNotFound([&](AsyncWebServerRequest *request)
                     { request->send(404, "text/plain", "Page not found!"); });
 
   // Route to handle  http://your-server/message?text=Hello&repeat=3&id=42&delay=30&graph=1,2,3,4&miny=0&maxy=15
-  server.on("/api/message", HTTP_GET, handleMessage);
-  server.on("/api/removemessage", HTTP_GET, handleMessageRemove);
+  server.on("/api/message", HTTP_GET, [=](AsyncWebServerRequest *req){ if(!authGuard(req)) { req->send(401, "text/plain", "Unauthorized"); return;} handleMessage(req); });
+  server.on("/api/removemessage", HTTP_GET, [=](AsyncWebServerRequest *req){ if(!authGuard(req)) { req->send(401, "text/plain", "Unauthorized"); return;} handleMessageRemove(req); });
 
-  server.on("/api/info", HTTP_GET, handleGetInfo);
+  server.on("/api/info", HTTP_GET, [=](AsyncWebServerRequest *req){ if(!authGuard(req)) { req->send(401, "text/plain", "Unauthorized"); return;} handleGetInfo(req); });
 
   // Handle API request to set an active plugin by ID
-  server.on("/api/plugin", HTTP_PATCH, handleSetPlugin);
+  server.on("/api/plugin", HTTP_PATCH, [=](AsyncWebServerRequest *req){ if(!authGuard(req)) { req->send(401, "text/plain", "Unauthorized"); return;} handleSetPlugin(req); });
 
   // Handle API request to set the brightness (0..255);
-  server.on("/api/brightness", HTTP_PATCH, handleSetBrightness);
-  server.on("/api/data", HTTP_GET, handleGetData);
+  server.on("/api/brightness", HTTP_PATCH, [=](AsyncWebServerRequest *req){ if(!authGuard(req)) { req->send(401, "text/plain", "Unauthorized"); return;} handleSetBrightness(req); });
+  server.on("/api/data", HTTP_GET, [=](AsyncWebServerRequest *req){ if(!authGuard(req)) { req->send(401, "text/plain", "Unauthorized"); return;} handleGetData(req); });
 
   // Scheduler
-  server.on("/api/schedule", HTTP_POST, handleSetSchedule);
-  server.on("/api/schedule/clear", HTTP_GET, handleClearSchedule);
-  server.on("/api/schedule/stop", HTTP_GET, handleStopSchedule);
-  server.on("/api/schedule/start", HTTP_GET, handleStartSchedule);
+  server.on("/api/schedule", HTTP_POST, [=](AsyncWebServerRequest *req){ if(!authGuard(req)) { req->send(401, "text/plain", "Unauthorized"); return;} handleSetSchedule(req); });
+  server.on("/api/schedule/clear", HTTP_GET, [=](AsyncWebServerRequest *req){ if(!authGuard(req)) { req->send(401, "text/plain", "Unauthorized"); return;} handleClearSchedule(req); });
+  server.on("/api/schedule/stop", HTTP_GET, [=](AsyncWebServerRequest *req){ if(!authGuard(req)) { req->send(401, "text/plain", "Unauthorized"); return;} handleStopSchedule(req); });
+  server.on("/api/schedule/start", HTTP_GET, [=](AsyncWebServerRequest *req){ if(!authGuard(req)) { req->send(401, "text/plain", "Unauthorized"); return;} handleStartSchedule(req); });
 
-  server.on("/api/storage/clear", HTTP_GET, handleClearStorage);
+  server.on("/api/storage/clear", HTTP_GET, [=](AsyncWebServerRequest *req){ if(!authGuard(req)) { req->send(401, "text/plain", "Unauthorized"); return;} handleClearStorage(req); });
 
   server.begin();
 }

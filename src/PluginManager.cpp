@@ -32,8 +32,21 @@ void PluginManager::activatePersistedPlugin()
     std::vector<Plugin *> &allPlugins = pluginManager.getAllPlugins();
 #ifdef ENABLE_STORAGE
     storage.begin("led-wall", true);
-    persistedPluginId = storage.getInt("current-plugin", allPlugins.at(0)->getId());
-    pluginManager.setActivePluginById(persistedPluginId);
+    // Prefer name-based persistence to avoid ID shifts when plugins are added
+    char nameBuf[64] = {0};
+    size_t n = storage.getString("current-plugin-name", nameBuf, sizeof(nameBuf));
+    if (n > 0) {
+        for (Plugin *p : allPlugins) {
+            if (strcmp(p->getName(), nameBuf) == 0) {
+                setActivePlugin(p->getName());
+                break;
+            }
+        }
+    }
+    if (!activePlugin) {
+        persistedPluginId = storage.getInt("current-plugin", allPlugins.at(0)->getId());
+        pluginManager.setActivePluginById(persistedPluginId);
+    }
     storage.end();
 #endif
     if (!activePlugin)
@@ -50,6 +63,7 @@ void PluginManager::persistActivePlugin()
     {
         persistedPluginId = activePlugin->getId();
         storage.putInt("current-plugin", persistedPluginId);
+        storage.putString("current-plugin-name", activePlugin->getName());
     }
     storage.end();
 #endif
