@@ -55,6 +55,7 @@ If you want the original feature set without these additions, use the upstream r
   - Pong Clock
   - Arcade Sprites (Space Invaders fly-by)
   - Tetris (Demo) with simple AI
+  - Moon Phase (uses WeatherService, aspect-corrected)
 
 </details>
 
@@ -120,6 +121,14 @@ code .
 5. **Build the Project**
 
    - Click the `PlatformIO Build` icon (bottom right corner).
+
+### Moon Phase (new)
+
+- Shows a large moon disc with the illuminated portion bright and the shadow side dimmed
+- Uses WeatherService (wttr.in) to fetch moon_phase and moon_illumination
+- Aspect-corrected rendering so the moon appears circular on non-square panels
+- Falls back to a loading indicator until data is available
+
    - Check the log for missing libraries.
      - Use the **Libraries** icon in PlatformIO to install required libraries.
    - Repeat `Clean` and `Build` until the build succeeds.
