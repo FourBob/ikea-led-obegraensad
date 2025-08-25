@@ -102,6 +102,9 @@ void ArcadeSpritesPlugin::render(){
   Screen.beginUpdate();
   Screen.clear();
 
+  const float AY = DISPLAY_ASPECT_YX; // pixel height / pixel width
+  const bool doAC = (ARCADE_SPRITES_ASPECT_CORRECT != 0) && (AY != 1.0f);
+
   for(const auto &e: entities_){
     const auto &frame = e.def->frames[e.frame];
     for(int dy=0; dy<e.def->h; ++dy){
@@ -110,6 +113,14 @@ void ArcadeSpritesPlugin::render(){
         if (rowMask & (1 << dx)){
           int px = (int)e.x + dx;
           int py = (int)e.y + dy;
+
+          if (doAC){
+            // Compress vertical coordinate toward the entity center to compensate aspect
+            float cy = e.y + e.def->h * 0.5f;
+            float sy = cy + (py - cy) / AY; // squash toward center by aspect factor
+            py = (int)roundf(sy);
+          }
+
           if (px>=0 && px<16 && py>=0 && py<16) Screen.setPixel(px, py, 1, e.bright);
         }
       }

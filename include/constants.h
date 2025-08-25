@@ -48,6 +48,12 @@
 #endif
 
 
+// Enable aspect-corrected rendering for Arcade Sprites (1=yes, 0=no)
+#ifndef ARCADE_SPRITES_ASPECT_CORRECT
+#define ARCADE_SPRITES_ASPECT_CORRECT 1
+#endif
+
+
 // name of WiFi created by the device if no known WiFi is available
 #define WIFI_MANAGER_SSID "IKEA"
 

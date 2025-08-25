@@ -126,10 +126,17 @@ code .
 
 - Shows a large moon disc with the illuminated portion bright and the shadow side dimmed
 - Uses WeatherService (wttr.in) to fetch moon_phase and moon_illumination
-- Aspect-corrected rendering so the moon appears circular on non-square panels
+- Aspect-corrected rendering so the moon appears circular on non-square panels (config via DISPLAY_ASPECT_YX)
 - Falls back to a loading indicator until data is available
 
    - Check the log for missing libraries.
+
+### Arcade Sprites: Aspect-corrected rendering
+
+- Sprites are vertically compressed during drawing to compensate for non-square pixel ratio
+- Toggle via ARCADE_SPRITES_ASPECT_CORRECT (1=on, default) and set DISPLAY_ASPECT_YX accordingly
+- Keeps sprites fully visible and reduces “gestreckt” look
+
      - Use the **Libraries** icon in PlatformIO to install required libraries.
    - Repeat `Clean` and `Build` until the build succeeds.
 
