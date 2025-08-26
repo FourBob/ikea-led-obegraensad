@@ -5,8 +5,8 @@
 #define WIFI_HOSTNAME "LostDisplay"
 
 #ifdef ESP8266
-#define WIFI_SSID "Dobendan"
-#define WIFI_PASSWORD "PMQA1Ndv41HLRaKV"
+#define WIFI_SSID "X"
+#define WIFI_PASSWORD "X"
 #endif
 
 // If you would like to perform OTA updates, you need to define the credentials here
