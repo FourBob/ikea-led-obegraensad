@@ -12,8 +12,13 @@
 #include <WiFiManager.h>
 
 #ifdef ESP32
+#include <WiFi.h>
 #include <ESPmDNS.h>
 #endif
+#ifdef ESP32
+#include <Preferences.h>
+#endif
+
 #ifdef ESP8266
 #include <ESP8266WiFi.h>
 #endif
@@ -40,6 +45,8 @@
 #include "WeatherService.h"
 #include "StockService.h"
 #include "plugins/StockChartPlugin.h"
+#include "plugins/SunrisePlugin.h"
+#include "plugins/SunsetPlugin.h"
 
 
 #ifdef ENABLE_SERVER
@@ -60,6 +67,11 @@ BfButton btn(BfButton::STANDALONE_DIGITAL, PIN_BUTTON, true, LOW);
 
 unsigned long previousMillis = 0;
 unsigned long interval = 30000;
+
+
+#ifdef ESP32
+bool g_apEnabled = false;
+#endif
 
 PluginManager pluginManager;
 SYSTEM_STATUS currentStatus = NONE;
@@ -99,6 +111,12 @@ void connectToWiFi()
   wifiManager.setWiFiAutoReconnect(true);
   wifiManager.autoConnect(WIFI_MANAGER_SSID);
 
+
+#ifdef ESP32
+  WiFi.setSleep(false);
+  Serial.println("[WIFI] PowerSave OFF");
+#endif
+
 #ifdef ESP32
   if (MDNS.begin(WIFI_HOSTNAME))
   {
@@ -118,6 +136,21 @@ void connectToWiFi()
     ESP.restart();
   }
 
+
+  // Load persisted AP flag and start if enabled
+  #ifdef ESP32
+  Preferences prefs;
+  prefs.begin("net", true);
+  g_apEnabled = prefs.getBool("ap_en", false);
+  prefs.end();
+  if (g_apEnabled) {
+    WiFi.mode(WIFI_AP_STA);
+    String apSsid = String(WIFI_HOSTNAME) + "-AP";
+    bool apok = WiFi.softAP(apSsid.c_str());
+    Serial.printf("[WIFI] SoftAP(%s) %s ip=%s\n", apSsid.c_str(), apok?"OK":"FAIL", WiFi.softAPIP().toString().c_str());
+  }
+  #endif
+
   lastConnectionAttempt = millis();
 }
 
@@ -131,6 +164,29 @@ void pressHandler(BfButton *btn, BfButton::press_pattern_t pattern)
       Scheduler.clearSchedule();
       pluginManager.activateNextPlugin();
     }
+    break;
+
+
+  case BfButton::DOUBLE_PRESS:
+  #ifdef ESP32
+    g_apEnabled = !g_apEnabled;
+    {
+      Preferences prefs;
+      prefs.begin("net", false);
+      prefs.putBool("ap_en", g_apEnabled);
+      prefs.end();
+    }
+    if (g_apEnabled) {
+      WiFi.mode(WIFI_AP_STA);
+      String apSsid = String(WIFI_HOSTNAME) + "-AP";
+      bool apok = WiFi.softAP(apSsid.c_str());
+      Serial.printf("[WIFI] SoftAP(%s) %s ip=%s\n", apSsid.c_str(), apok?"OK":"FAIL", WiFi.softAPIP().toString().c_str());
+    } else {
+      WiFi.softAPdisconnect(true);
+      WiFi.mode(WIFI_STA);
+      Serial.println("[WIFI] SoftAP OFF");
+    }
+  #endif
     break;
 
   case BfButton::LONG_PRESS:
@@ -178,6 +234,8 @@ void baseSetup()
   pluginManager.addPlugin(new TetrisDemoPlugin());
   pluginManager.addPlugin(new ArcadeSpritesPlugin());
   pluginManager.addPlugin(new MoonPhasePlugin());
+  pluginManager.addPlugin(new SunrisePlugin());
+  pluginManager.addPlugin(new SunsetPlugin());
   pluginManager.addPlugin(new StockChartPlugin());
 
 #ifdef ENABLE_SERVER
@@ -252,6 +310,7 @@ void setup()
 void loop()
 {
   static uint8_t taskCounter = 0;
+  static unsigned long lastHeartbeat = 0;
 
   btn.read();
 
@@ -272,11 +331,10 @@ void loop()
       Messages.scrollMessageEveryMinute();
     }
 
-  // Background stock fetch
-  if ((taskCounter % 64) == 0) { // ~1/16th der Weather-Frequenz
-    StockService::getInstance().maybeFetch();
-  }
-
+    // Background stock fetch
+    if ((taskCounter % 64) == 0) { // ~1/16th der Weather-Frequenz
+      StockService::getInstance().maybeFetch();
+    }
   }
 
   // Background weather fetch (independent of active plugin)
@@ -291,6 +349,28 @@ void loop()
     {
       connectToWiFi();
     }
+  }
+
+  // Heartbeat: alle 5s Status ins Log
+  if (millis() - lastHeartbeat >= 5000)
+  {
+    wl_status_t st = WiFi.status();
+    IPAddress ip = WiFi.localIP();
+    IPAddress gw = WiFi.gatewayIP();
+    long rssi = WiFi.RSSI();
+    uint32_t freeH = ESP.getFreeHeap();
+    uint32_t minH  = ESP.getMinFreeHeap();
+    uint32_t maxBlk= ESP.getMaxAllocHeap();
+    Serial.printf("[HB] up=%lus status=%d ip=%s gw=%s rssi=%lddBm heap(free=%lu,min=%lu,maxBlk=%lu)\n",
+                  millis() / 1000,
+                  (int)st,
+                  ip.toString().c_str(),
+                  gw.toString().c_str(),
+                  rssi,
+                  (unsigned long)freeH,
+                  (unsigned long)minH,
+                  (unsigned long)maxBlk);
+    lastHeartbeat = millis();
   }
 
   taskCounter++;

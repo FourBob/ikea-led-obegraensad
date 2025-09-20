@@ -146,7 +146,7 @@ void handleGetData(AsyncWebServerRequest *request)
 
 void handleGetInfo(AsyncWebServerRequest *request)
 {
-    DynamicJsonDocument jsonDocument(6144);
+    DynamicJsonDocument jsonDocument(8192);
     jsonDocument["rows"] = ROWS;
     jsonDocument["cols"] = COLS;
     jsonDocument["status"] = currentStatus;
@@ -163,14 +163,37 @@ void handleGetInfo(AsyncWebServerRequest *request)
     jsonDocument["version"] = APP_VERSION_STR;
 #endif
 
-
+    // Active schedule (compat)
     JsonArray scheduleArray = jsonDocument.createNestedArray("schedule");
     for (const auto &item : Scheduler.schedule)
     {
         JsonObject scheduleItem = scheduleArray.createNestedObject();
         scheduleItem["pluginId"] = item.pluginId;
-        scheduleItem["duration"] = item.duration / 1000; // Convert milliseconds to seconds
+        scheduleItem["duration"] = item.duration / 1000; // seconds
     }
+
+    // Day schedule
+    JsonArray scheduleDay = jsonDocument.createNestedArray("scheduleDay");
+    for (const auto &item : Scheduler.scheduleDay)
+    {
+        JsonObject scheduleItem = scheduleDay.createNestedObject();
+        scheduleItem["pluginId"] = item.pluginId;
+        scheduleItem["duration"] = item.duration / 1000; // seconds
+    }
+
+    // Night schedule
+    JsonArray scheduleNight = jsonDocument.createNestedArray("scheduleNight");
+    for (const auto &item : Scheduler.scheduleNight)
+    {
+        JsonObject scheduleItem = scheduleNight.createNestedObject();
+        scheduleItem["pluginId"] = item.pluginId;
+        scheduleItem["duration"] = item.duration / 1000; // seconds
+    }
+
+    // Bounds and period
+    jsonDocument["dayStart"] = Scheduler.getDayStartHHMM();
+    jsonDocument["nightStart"] = Scheduler.getNightStartHHMM();
+    jsonDocument["currentPeriod"] = Scheduler.isDayNow() ? "day" : "night";
 
     JsonArray plugins = jsonDocument.createNestedArray("plugins");
 
@@ -212,6 +235,82 @@ void handleSetSchedule(AsyncWebServerRequest *request)
     jsonResponse["message"] = "Schedule updated";
     String output;
     serializeJson(jsonResponse, output);
+    request->send(200, "application/json", output);
+}
+
+// New day/night endpoints
+void handleSetScheduleDay(AsyncWebServerRequest *request)
+{
+    bool ok = Scheduler.setDayScheduleByJSONString(request->arg("schedule"));
+    StaticJsonDocument<256> jsonResponse;
+    if (!ok)
+    {
+        jsonResponse["error"] = true;
+        jsonResponse["message"] = "Day schedule cannot be set";
+        String output; serializeJson(jsonResponse, output);
+        request->send(400, "application/json", output);
+        return;
+    }
+    // Start or refresh according to current period
+    Scheduler.start();
+    sendInfo();
+    jsonResponse["status"] = "success";
+    jsonResponse["message"] = "Day schedule updated";
+    String output; serializeJson(jsonResponse, output);
+    request->send(200, "application/json", output);
+}
+
+void handleSetScheduleNight(AsyncWebServerRequest *request)
+{
+    bool ok = Scheduler.setNightScheduleByJSONString(request->arg("schedule"));
+    StaticJsonDocument<256> jsonResponse;
+    if (!ok)
+    {
+        jsonResponse["error"] = true;
+        jsonResponse["message"] = "Night schedule cannot be set";
+        String output; serializeJson(jsonResponse, output);
+        request->send(400, "application/json", output);
+        return;
+    }
+    Scheduler.start();
+    sendInfo();
+    jsonResponse["status"] = "success";
+    jsonResponse["message"] = "Night schedule updated";
+    String output; serializeJson(jsonResponse, output);
+    request->send(200, "application/json", output);
+}
+
+void handleSetScheduleBounds(AsyncWebServerRequest *request)
+{
+    StaticJsonDocument<256> jsonResponse;
+    bool ok = false;
+    if (request->hasArg("dayStart") && request->hasArg("nightStart"))
+    {
+        ok = Scheduler.setBoundsByHHMM(request->arg("dayStart"), request->arg("nightStart"));
+    }
+    else if (request->hasArg("dayStartMins") && request->hasArg("nightStartMins"))
+    {
+        ok = true;
+        int d = request->arg("dayStartMins").toInt();
+        int n = request->arg("nightStartMins").toInt();
+        Scheduler.setBoundsByMinutes(d, n);
+    }
+
+    if (!ok)
+    {
+        jsonResponse["error"] = true;
+        jsonResponse["message"] = "Invalid or missing bounds";
+        String output; serializeJson(jsonResponse, output);
+        request->send(400, "application/json", output);
+        return;
+    }
+
+    sendInfo();
+    jsonResponse["status"] = "success";
+    jsonResponse["message"] = "Bounds updated";
+    jsonResponse["dayStart"] = Scheduler.getDayStartHHMM();
+    jsonResponse["nightStart"] = Scheduler.getNightStartHHMM();
+    String output; serializeJson(jsonResponse, output);
     request->send(200, "application/json", output);
 }
 

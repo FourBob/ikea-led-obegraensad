@@ -13,4 +13,7 @@ public:
   void loop() override;
   const char *getName() const override;
   void websocketHook(DynamicJsonDocument &request) override;
+  // Expose current frames for minimal fetch via WebSocket
+  const std::vector<std::vector<int>> &getFrames() const;
+
 };

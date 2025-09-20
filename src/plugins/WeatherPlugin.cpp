@@ -36,39 +36,28 @@ void WeatherPlugin::update()
 
     if (d.valid)
     {
-        int weatherCode = d.weatherCode;
-        if (std::find(thunderCodes.begin(), thunderCodes.end(), weatherCode) != thunderCodes.end())
-        {
-            weatherIcon = 1; // thunderstorm
-        }
-        else if (std::find(rainCodes.begin(), rainCodes.end(), weatherCode) != rainCodes.end())
-        {
-            weatherIcon = 4; // rain
-        }
-        else if (std::find(snowCodes.begin(), snowCodes.end(), weatherCode) != snowCodes.end())
-        {
-            weatherIcon = 4; // map snow to rain icon (no snow icon available)
-        }
-        else if (std::find(fogCodes.begin(), fogCodes.end(), weatherCode) != fogCodes.end())
-        {
-            weatherIcon = 0; // map fog to cloudy
-            iconY = 2;
-        }
-        else if (std::find(clearCodes.begin(), clearCodes.end(), weatherCode) != clearCodes.end())
-        {
+        // OpenWeatherMap condition ID mapping
+        int id = d.weatherCode;
+        int cat = id / 100; // 2xx thunder, 3xx drizzle, 5xx rain, 6xx snow, 7xx atmosphere, 8xx clouds
+        if (id == 800) {
             weatherIcon = 2; // clear
             iconY = 1;
             tempY = 9;
-        }
-        else if (std::find(cloudyCodes.begin(), cloudyCodes.end(), weatherCode) != cloudyCodes.end())
-        {
+        } else if (id >= 801 && id <= 803) {
+            weatherIcon = 3; // partly cloudy
+            iconY = 2;
+        } else if (id == 804) {
             weatherIcon = 0; // cloudy
             iconY = 2;
             tempY = 9;
-        }
-        else if (std::find(partyCloudyCodes.begin(), partyCloudyCodes.end(), weatherCode) != partyCloudyCodes.end())
-        {
-            weatherIcon = 3; // partly cloudy
+        } else if (cat == 2) {
+            weatherIcon = 1; // thunderstorm
+        } else if (cat == 3 || cat == 5) {
+            weatherIcon = 4; // drizzle/rain
+        } else if (cat == 6) {
+            weatherIcon = 4; // snow → use rain icon (no snow icon)
+        } else if (cat == 7) {
+            weatherIcon = 0; // fog/haze/mist → map to cloudy
             iconY = 2;
         }
 

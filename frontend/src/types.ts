@@ -11,6 +11,8 @@ export interface ScheduleItem {
   duration: number;
 }
 
+export type Period = "day" | "night";
+
 export interface StoreActions {
   setIsActiveScheduler: (isActive: boolean) => void;
   setRotation: (rotation: number) => void;
@@ -20,7 +22,12 @@ export interface StoreActions {
   setIndexMatrix: (indexMatrix: number[]) => void;
   setLeds: (leds: number[]) => void;
   setSystemStatus: (systemStatus: SYSTEM_STATUS) => void;
-  setSchedule: (items: ScheduleItem[]) => void;
+  setSchedule: (items: ScheduleItem[]) => void; // active schedule (compat)
+  setScheduleDay: (items: ScheduleItem[]) => void;
+  setScheduleNight: (items: ScheduleItem[]) => void;
+  setDayStart: (s: string) => void;
+  setNightStart: (s: string) => void;
+  setCurrentPeriod: (p: Period) => void;
   setArtnetUniverse: (artnetUniverse: number) => void;
   setBuildTime: (s: string) => void;
   setVersion: (s: string) => void;
@@ -39,7 +46,12 @@ export interface Store {
   systemStatus: SYSTEM_STATUS;
   connectionState: () => number;
   connectionStatus?: string;
-  schedule: ScheduleItem[];
+  schedule: ScheduleItem[]; // active schedule (compat for UI)
+  scheduleDay: ScheduleItem[];
+  scheduleNight: ScheduleItem[];
+  dayStart: string; // HH:MM
+  nightStart: string; // HH:MM
+  currentPeriod: Period;
   buildTime?: string;
   version?: string;
 }

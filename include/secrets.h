@@ -5,8 +5,8 @@
 #define WIFI_HOSTNAME "LostDisplay"
 
 #ifdef ESP8266
-#define WIFI_SSID "X"
-#define WIFI_PASSWORD "X"
+#define WIFI_SSID "Dobendan"
+#define WIFI_PASSWORD "PMQA1Ndv41HLRaKV"
 #endif
 
 // If you would like to perform OTA updates, you need to define the credentials here
@@ -16,7 +16,7 @@
 // Weather location used for wttr.in queries (city name or "lat,lon")
 // Example: "Berlin" or "52.52,13.405"
 #ifndef WEATHER_LOCATION
-#define WEATHER_LOCATION "40545"
+#define WEATHER_LOCATION "Dusseldorf"
 #endif
 
 // Weather update interval in minutes (background fetch)
@@ -24,6 +24,10 @@
 #define WEATHER_UPDATE_MINUTES 30
 #endif
 
+// Time format configuration for plugins (1 = 24h default, 0 = 12h)
+#ifndef TIME_FORMAT_24H
+#define TIME_FORMAT_24H 1
+#endif
 
 #ifndef API_TOKEN
 #define API_TOKEN ""
@@ -33,3 +37,5 @@
 #endif
 
 #define STOCK_SYMBOL "acn.us"
+
+#define OWM_API_KEY "f6797002e1ba49630419a52c895777d9"

@@ -22,6 +22,10 @@ struct WeatherData {
   int moonIllum = -1;              // illumination percent (0..100), -1 if unknown
   char moonPhase[16] = {0};        // e.g., "Waxing Crescent", truncated
 
+  // Sunrise/Sunset (minutes since midnight, -1 if unknown)
+  int sunriseMinutes = -1;
+  int sunsetMinutes  = -1;
+
   unsigned long timestamp = 0; // millis when fetched
   bool valid = false;
 };

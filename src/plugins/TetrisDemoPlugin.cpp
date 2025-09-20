@@ -19,8 +19,8 @@ const uint16_t TetrisDemoPlugin::SHAPES[7][4] = {
   {0x0C60, 0x4260, 0x06C0, 0x2640},
   // J
   {0x8E00, 0x6440, 0x0E20, 0x44C0},
-  // L
-  {0x2E00, 0x4460, 0x0E80, 0xC440}
+  // L (fix rotation 0: vertical on right above 3-wide base)
+  {0x1E00, 0x4460, 0x0E80, 0xC440}
 };
 
 void TetrisDemoPlugin::resetBoard() {
@@ -107,18 +107,29 @@ void TetrisDemoPlugin::applyClear() {
 }
 
 void TetrisDemoPlugin::stepHoming() {
-  // rotate progressively toward target
+  // 1) Try to reach target rotation with simple wall-kicks
   if (active_.rot != targetRot_) {
-    auto p = active_;
+    Piece p = active_;
     p.rot = (p.rot + 1) % 4;
-    if (!collides(p)) active_ = p; // rotate if possible
-    return;
+    if (!collides(p)) { active_ = p; return; }
+    // wall-kick left
+    p = active_; p.rot = (p.rot + 1) % 4; p.x -= 1;
+    if (!collides(p)) { active_ = p; return; }
+    // wall-kick right
+    p = active_; p.rot = (p.rot + 1) % 4; p.x += 1;
+    if (!collides(p)) { active_ = p; return; }
+    // if rotation blocked, try horizontal step first to make room
   }
-  // move horizontally toward target
+  // 2) Move horizontally toward target (one step per tick)
   if (active_.x != targetX_) {
-    auto p = active_;
-    p.x += (active_.x < targetX_) ? 1 : -1;
-    if (!collides(p)) active_ = p;
+    Piece p = active_;
+    int dir = (active_.x < targetX_) ? 1 : -1;
+    p.x += dir;
+    if (!collides(p)) { active_ = p; return; }
+    // try move with a rotate that may reduce width
+    Piece r = active_;
+    r.rot = (r.rot + 1) % 4; r.x += dir;
+    if (!collides(r)) { active_ = r; return; }
   }
 }
 
@@ -167,15 +178,28 @@ int TetrisDemoPlugin::evaluateBoardAfter(uint8_t type, uint8_t rot, int x) const
     int bx = x + dx, by = y + dy;
     if (bx>=0 && bx<BOARD_W && by>=0 && by<BOARD_H) boardCopy[by][bx] = 1;
   }
-  int heightSum = 0, holes = 0;
+  // Count completed lines
+  int linesCleared = 0;
+  for (int ry=0; ry<BOARD_H; ++ry) {
+    bool full = true; for (int cx=0; cx<BOARD_W; ++cx) full &= (boardCopy[ry][cx] != 0);
+    if (full) linesCleared++;
+  }
+  // Heights and holes
+  int heightSum = 0, holes = 0, bumpiness = 0;
+  int prevHeight = -1;
   for (int cx=0; cx<BOARD_W; ++cx) {
     int top = -1;
     for (int cy=0; cy<BOARD_H; ++cy) if (boardCopy[cy][cx]) { top = cy; break; }
-    if (top == -1) continue;
-    heightSum += (BOARD_H - top);
-    for (int cy=top+1; cy<BOARD_H; ++cy) if (!boardCopy[cy][cx]) holes++;
+    int h = (top == -1) ? 0 : (BOARD_H - top);
+    heightSum += h;
+    if (top != -1) {
+      for (int cy=top+1; cy<BOARD_H; ++cy) if (!boardCopy[cy][cx]) holes++;
+    }
+    if (prevHeight != -1) bumpiness += abs(h - prevHeight);
+    prevHeight = h;
   }
-  return heightSum*2 + holes*8;
+  // Lower is better
+  return heightSum*2 + holes*12 + bumpiness*1 - linesCleared*60;
 }
 
 void TetrisDemoPlugin::chooseBestPlacement(uint8_t pieceType, uint8_t &bestRot, int &bestX) const {
@@ -276,6 +300,7 @@ void TetrisDemoPlugin::loop() {
   stepHoming();
   stepGravity();
   render();
+  yield(); // allow WiFi/Async server to run
 }
 
 bool TetrisDemoPlugin::isOverflow() const {

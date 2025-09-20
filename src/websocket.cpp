@@ -1,5 +1,6 @@
 #include "PluginManager.h"
 #include "scheduler.h"
+#include "plugins/AnimationPlugin.h"
 
 #ifdef ENABLE_SERVER
 
@@ -13,10 +14,21 @@ void sendInfo()
 {
   static unsigned long lastSent = 0;
   unsigned long now = millis();
-  if (now - lastSent < 50) return; // throttle broadcast
+  // Throttle broadcast a bit more to avoid WS queue overflow
+  if (now - lastSent < 100) return;
+
+  // If token is required but no client is authenticated yet, skip
+  if (kApiToken && strlen(kApiToken) > 0) {
+    if (wsAuthed.empty()) return;
+  } else {
+    // No token: if there are no clients, or not writable, skip
+    if (ws.count() == 0) return;
+    if (!ws.availableForWriteAll()) return;
+  }
+
   lastSent = now;
 
-  DynamicJsonDocument jsonDocument(6144);
+  DynamicJsonDocument jsonDocument(8192);
   if (currentStatus == NONE)
   {
     for (int j = 0; j < ROWS * COLS; j++)
@@ -26,14 +38,43 @@ void sendInfo()
   }
 
   jsonDocument["status"] = currentStatus;
-  jsonDocument["plugin"] = pluginManager.getActivePlugin()->getId();
+  if (pluginManager.getActivePlugin()) {
+    jsonDocument["plugin"] = pluginManager.getActivePlugin()->getId();
+  } else {
+    jsonDocument["plugin"] = -1;
+  }
   jsonDocument["event"] = "info";
   jsonDocument["rotation"] = Screen.currentRotation;
   jsonDocument["brightness"] = Screen.getCurrentBrightness();
   jsonDocument["scheduleActive"] = Scheduler.isActive;
 
+  // Active schedule (compat)
   JsonArray scheduleArray = jsonDocument.createNestedArray("schedule");
-  for (const auto &item : Scheduler.schedule)
+  for (const auto &item : Scheduler.schedule) {
+    JsonObject o = scheduleArray.createNestedObject();
+    o["pluginId"] = item.pluginId;
+    o["duration"] = item.duration / 1000; // seconds
+  }
+
+  // Day schedule
+  JsonArray scheduleDay = jsonDocument.createNestedArray("scheduleDay");
+  for (const auto &item : Scheduler.scheduleDay) {
+    JsonObject o = scheduleDay.createNestedObject();
+    o["pluginId"] = item.pluginId;
+    o["duration"] = item.duration / 1000; // seconds
+  }
+  // Night schedule
+  JsonArray scheduleNight = jsonDocument.createNestedArray("scheduleNight");
+  for (const auto &item : Scheduler.scheduleNight) {
+    JsonObject o = scheduleNight.createNestedObject();
+    o["pluginId"] = item.pluginId;
+    o["duration"] = item.duration / 1000; // seconds
+  }
+  // Bounds and current period
+  jsonDocument["dayStart"] = Scheduler.getDayStartHHMM();
+  jsonDocument["nightStart"] = Scheduler.getNightStartHHMM();
+  jsonDocument["currentPeriod"] = Scheduler.isDayNow() ? "day" : "night";
+
   // Build metadata
 #ifdef BUILD_TIME_STR
   jsonDocument["buildTime"] = BUILD_TIME_STR;
@@ -42,19 +83,11 @@ void sendInfo()
   jsonDocument["version"] = APP_VERSION_STR;
 #endif
 
-  {
-    JsonObject scheduleItem = scheduleArray.createNestedObject();
-    scheduleItem["pluginId"] = item.pluginId;
-    scheduleItem["duration"] = item.duration / 1000; // Convert milliseconds to seconds
-  }
-
   JsonArray plugins = jsonDocument.createNestedArray("plugins");
-
   std::vector<Plugin *> &allPlugins = pluginManager.getAllPlugins();
   for (Plugin *plugin : allPlugins)
   {
     JsonObject object = plugins.createNestedObject();
-
     object["id"] = plugin->getId();
     object["name"] = plugin->getName();
   }
@@ -62,10 +95,20 @@ void sendInfo()
   serializeJson(jsonDocument, output);
 
   if (kApiToken && strlen(kApiToken) > 0) {
-    // Send only to authorized clients
-    for (auto id : wsAuthed) ws.text(id, output);
+    // Send only to authorized clients that are writable
+    bool anySent = false;
+    for (auto id : wsAuthed) {
+      if (ws.availableForWrite(id)) {
+        ws.text(id, output);
+        anySent = true;
+      }
+    }
+    (void)anySent; // suppress unused warning
   } else {
-    ws.textAll(output);
+    // Double-check writability before broadcast
+    if (ws.availableForWriteAll()) {
+      ws.textAll(output);
+    }
   }
 
   jsonDocument.clear();
@@ -156,6 +199,41 @@ void onWsEvent(
         {
           uint8_t brightness = wsRequest["brightness"].as<uint8_t>();
           Screen.setBrightness(brightness, true);
+        }
+        else if (!strcmp(event, "get-animation"))
+        {
+          // Minimal fetch: return current frames from Animation plugin as 32-byte arrays
+          Plugin* p = pluginManager.getActivePlugin();
+          if (p && strcmp(p->getName(), "Animation") == 0) {
+            AnimationPlugin* ap = static_cast<AnimationPlugin*>(p);
+            const auto &frames = ap->getFrames();
+            DynamicJsonDocument resp(4096);
+            resp["event"] = "animation-frames";
+            resp["screens"] = (int)frames.size();
+            JsonArray dataArr = resp.createNestedArray("data");
+            for (const auto &f : frames) {
+              JsonArray row = dataArr.createNestedArray();
+              for (int k = 0; k < (int)f.size(); ++k) {
+                row.add(f[k]);
+              }
+            }
+            String out;
+            serializeJson(resp, out);
+            if (ws.availableForWrite(client->id())) {
+              ws.text(client->id(), out);
+            }
+          } else {
+            // Not animation plugin: return empty response
+            DynamicJsonDocument resp(256);
+            resp["event"] = "animation-frames";
+            resp["screens"] = 0;
+            resp.createNestedArray("data");
+            String out;
+            serializeJson(resp, out);
+            if (ws.availableForWrite(client->id())) {
+              ws.text(client->id(), out);
+            }
+          }
         }
       }
     }

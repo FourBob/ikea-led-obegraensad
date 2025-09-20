@@ -11,11 +11,22 @@ What this fork adds/changes:
 - New plugins
   - Arcade Sprites: 5 Space‑Invaders‑inspired sprites; exactly 2 are visible at a time; slow right‑to‑left fly‑by; spawns are always fully visible (no top/bottom clipping) and avoid starting overlaps; randomized start bands/types for variety
   - Tetris (Demo): simple heuristic AI chooses placements (prefers low height and few holes); line clears with blink and collapse; automatic restart on overflow (blocks reach hidden top rows); optional manual control via WebSocket (rotate/left/right/softDrop/hardDrop); randomized first “next piece” at boot
+  - Sunrise: Sonnenaufgang mit Icon oben mittig und Uhrzeit unten mittig im PongClock‑Stil (kleine Ziffern, ohne Doppelpunkt); Zeitformat 12/24h über `TIME_FORMAT_24H` in `include/secrets.h`; erzwungene Neuzeichnung, damit beim Reaktivieren keine Platzhalter erscheinen
+  - Sunset: Sonnenuntergang mit Icon oben mittig und Uhrzeit unten mittig im PongClock‑Stil; nutzt Astronomie‑Daten aus dem WeatherService
+  - Stock Chart: zeigt die letzten bis zu 16 Schlusskurse als Mini-Chart (Raster, rechtsbündig); Daten via stooq.com CSV; Ticker per `STOCK_SYMBOL` in `include/secrets.h` konfigurierbar (Standard: `aapl.us`)
+
+
 - Stability/quality improvements
   - Tetris: fixed preview flicker at the top‑right; corrected full‑row clear and collapse
   - Randomized starts in both plugins so they don’t always start with the same piece/sprites
+  - Tetris: L‑Tetromino in Rotation 0 korrigiert (3er‑Basis mit rechtem „Fuß“)
+  - Tetris: AI führt aktive Verschiebungen/Rotationen aus (inkl. einfachen Wall‑Kicks) und nutzt verbesserte Heuristik (LinesCleared belohnt, Holes stark bestraft, Bumpiness berücksichtigt)
+  - Tetris: `yield()` im Plugin‑Loop, damit Web‑Interface/WiFi responsiv bleiben (verhindert mögliche Freezes)
+
 - Developer experience
   - Added include/secrets_example.h and updated README to simplify local setup
+  - `TIME_FORMAT_24H` in `include/secrets.h` zur Steuerung des 12/24‑Stunden‑Formats für Zeit‑Plugins (PongClock, Sunrise, Sunset)
+
 
 If you want the original feature set without these additions, use the upstream repository linked above.
 
@@ -48,6 +59,11 @@ If you want the original feature set without these additions, use the upstream r
   - Clock
   - Big Clock
   - Weather
+  - Stock Chart
+
+  - Sunrise
+  - Sunset
+
   - Rain
   - Animation with the "Animation Creator in Web UI"
   - Firework
@@ -65,6 +81,20 @@ https://github.com/user-attachments/assets/ddf91be1-2c95-4adc-b178-05b0781683cc
 
 You can control the lamp with a supplied web GUI.
 You can get the IP via serial output or you can search it in your router settings.
+
+
+## Netzwerk & Diagnose (neu)
+
+- WiFi Power Save ist deaktiviert (schnellere Reaktionszeit des Web-Servers)
+- Diagnose-Endpunkte:
+  - `http://<ip>/healthz` → kurzer Healthcheck ("ok")
+  - `http://<ip>/diag` → einfache Textdiagnose (ip, gw, rssi, heap)
+  - `http://<ip>/ping` → Latenztest; die bediente Zeit wird im Seriell-Log protokolliert
+- SoftAP-Fallback (ohne Router):
+  - Per Doppel‑Klick auf den Taster kann ein Access Point ein-/ausgeschaltet werden
+  - SSID: `<WIFI_HOSTNAME>-AP` (z. B. `LostDisplay-AP`), Standard ohne Passwort
+  - Der Status wird persistent gespeichert (NVS) und beim Booten wiederhergestellt
+  - Doppel‑Klick erneut → AP wieder aus; Normalbetrieb ausschließlich im Heimnetz
 
 # How to
 
@@ -154,6 +184,27 @@ code .
   - Game restarts automatically when blocks reach the hidden top rows
   - Manual demo control via WebSocket events (optional): rotate/left/right/softDrop/hardDrop
   - First “next piece” is randomized at boot for variety
+
+- Sunrise
+  - Icon oben mittig; Uhrzeit unten mittig im PongClock‑Stil (kleine Ziffern, ohne Doppelpunkt)
+  - Datenquelle: WeatherService (wttr.in Astronomie)
+  - 12/24h umschaltbar über `TIME_FORMAT_24H` in `include/secrets.h`
+- Sunset
+  - Icon oben mittig; Uhrzeit unten mittig im PongClock‑Stil
+  - Datenquelle: WeatherService (wttr.in Astronomie)
+- Stock Chart
+  - Zeigt die letzten bis zu 16 Schlusskurse (tägliche Daten) als Mini‑Chart auf 16×16, mit feinem Raster und rechtsbündiger Verlaufslinie
+  - Datenquelle: stooq.com (kostenlose CSV‑API)
+  - Konfiguration: Ticker über `STOCK_SYMBOL` in `include/secrets.h` (Standard: `aapl.us`; wenn keine Suffixe angegeben, wird `.us` ergänzt)
+  - Aktualisierung: Standardmäßig stündlich im Hintergrund; Darstellung wird mit ~2 Hz aktualisiert
+
+  Beispiel `include/secrets.h`:
+
+  ```c
+  #define STOCK_SYMBOL "msft.us"
+  ```
+
+  - Erzwungene Neuzeichnung, damit beim erneuten Aktivieren keine „— — —“ Platzhalter bleiben
 
 
 ### Configuring WiFi with WiFi manager
@@ -448,6 +499,56 @@ curl http://your-server/api/schedule/stop
 
 ---
 
+
+---
+
+# WebSocket API (Realtime)
+
+- Endpoint: `ws://<device-ip>/ws`
+- Auth (optional): Wenn `API_TOKEN` gesetzt ist, muss als erste Nachricht gesendet werden:
+  ```json
+  {"event":"auth","token":"<API_TOKEN>"}
+  ```
+  Andernfalls wird die Verbindung mit `Unauthorized` geschlossen.
+
+## Beispiele: Tetris (Demo) manuell steuern
+
+Nach erfolgreichem Verbindungsaufbau (und ggf. Auth) kann die Demo über JSON‑Events gesteuert werden.
+
+- Rotieren:
+  ```json
+  {"event":"tetris","action":"rotate"}
+  ```
+- Nach links/rechts schieben:
+  ```json
+  {"event":"tetris","action":"left"}
+  {"event":"tetris","action":"right"}
+  ```
+- Soft/Hard‑Drop:
+  ```json
+  {"event":"tetris","action":"softDrop"}
+  {"event":"tetris","action":"hardDrop"}
+  ```
+
+### Schnelltest mit websocat
+
+```bash
+# Optional: websocat installieren (macOS)
+brew install websocat
+
+# Verbinden (ohne Token)
+websocat ws://<device-ip>/ws
+
+# Verbinden (mit Token)
+websocat -H "Sec-WebSocket-Protocol: json" ws://<device-ip>/ws
+# Danach zuerst senden:
+{"event":"auth","token":"<API_TOKEN>"}
+# Und z. B. rotieren:
+{"event":"tetris","action":"rotate"}
+```
+
+Hinweis: Die Web‑GUI nutzt die gleiche WebSocket‑Schnittstelle. Per HTTP‑API lassen sich weiterhin Plugins wechseln, Helligkeit setzen usw. (siehe Abschnitte oben).
+
 ## Get Display Data
 
 To retrieve the current display data as a byte-array, each byte representing the brightness value. The global brightness is applied after these values.
@@ -630,6 +731,19 @@ void MyPlugin::websocketHook(DynamicJsonDocument &request) {
 ```
 
 2. Add your plugin to the `main.cpp`.
+
+## Web-UI nicht erreichbar / sehr langsam
+
+- Prüfe, dass dein Gerät und das ESP im selben Netz sind (kein Gast-WLAN/Client‑Isolation)
+- Teste die Diagnose:
+  - `http://<ip>/healthz` (sollte "ok" liefern)
+  - `http://<ip>/diag`
+  - `http://<ip>/ping` (Latenz im Seriell‑Log)
+- Falls der Router Peer‑to‑Peer blockiert: SoftAP‑Fallback nutzen
+  - Taster doppelt drücken → mit `SSID: <WIFI_HOSTNAME>-AP` verbinden → `http://192.168.4.1/`
+  - Doppel‑Klick erneut → AP wieder aus
+- Browser‑Hinweise: HTTP (nicht HTTPS), ggf. harter Reload/Cache leeren, anderer Browser probieren
+
 
 ```cpp
 #include "plugins/MyPlugin.h"

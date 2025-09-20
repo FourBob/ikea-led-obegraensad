@@ -34,7 +34,7 @@ void PluginManager::activatePersistedPlugin()
     storage.begin("led-wall", true);
     // Prefer name-based persistence to avoid ID shifts when plugins are added
     char nameBuf[64] = {0};
-    size_t n = storage.getString("current-plugin-name", nameBuf, sizeof(nameBuf));
+    size_t n = storage.getString("plugin_name", nameBuf, sizeof(nameBuf));
     if (n > 0) {
         for (Plugin *p : allPlugins) {
             if (strcmp(p->getName(), nameBuf) == 0) {
@@ -53,6 +53,12 @@ void PluginManager::activatePersistedPlugin()
     {
         pluginManager.setActivePluginById(allPlugins.at(0)->getId());
     }
+#ifdef ENABLE_STORAGE
+    // Ensure we persist a valid default on first run so it is "gefunden" beim nächsten Start
+    if (activePlugin) {
+        persistActivePlugin();
+    }
+#endif
 }
 
 void PluginManager::persistActivePlugin()
@@ -63,7 +69,7 @@ void PluginManager::persistActivePlugin()
     {
         persistedPluginId = activePlugin->getId();
         storage.putInt("current-plugin", persistedPluginId);
-        storage.putString("current-plugin-name", activePlugin->getName());
+        storage.putString("plugin_name", activePlugin->getName());
     }
     storage.end();
 #endif

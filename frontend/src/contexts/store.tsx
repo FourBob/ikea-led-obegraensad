@@ -38,6 +38,11 @@ const [mainStore, setStore] = createStore<Store>({
   connectionState: wsState,
   connectionStatus: connectionStatus[0],
   schedule: [],
+  scheduleDay: [],
+  scheduleNight: [],
+  dayStart: "07:00",
+  nightStart: "19:00",
+  currentPeriod: "day",
   buildTime: undefined as unknown as string,
   version: undefined as unknown as string,
 });
@@ -54,6 +59,11 @@ const actions: StoreActions = {
   setLeds: (leds) => setStore("leds", leds),
   setSystemStatus: (systemStatus: SYSTEM_STATUS) => setStore("systemStatus", systemStatus),
   setSchedule: (items: ScheduleItem[]) => setStore("schedule", items),
+  setScheduleDay: (items: ScheduleItem[]) => setStore("scheduleDay", items),
+  setScheduleNight: (items: ScheduleItem[]) => setStore("scheduleNight", items),
+  setDayStart: (s: string) => setStore("dayStart", s),
+  setNightStart: (s: string) => setStore("nightStart", s),
+  setCurrentPeriod: (p) => setStore("currentPeriod", p),
   setBuildTime: (s: string) => setStore("buildTime", s),
   setVersion: (s: string) => setStore("version", s),
   send: ws.send,
@@ -77,9 +87,12 @@ export const StoreProvider = (props?: { value?: Store; children?: JSX.Element })
           actions.setBrightness(json.brightness);
           actions.setIsActiveScheduler(json.scheduleActive);
 
-          if (json.schedule) {
-            actions.setSchedule(json.schedule);
-          }
+          if (json.schedule) actions.setSchedule(json.schedule);
+          if (json.scheduleDay) actions.setScheduleDay(json.scheduleDay);
+          if (json.scheduleNight) actions.setScheduleNight(json.scheduleNight);
+          if (json.dayStart) actions.setDayStart(json.dayStart);
+          if (json.nightStart) actions.setNightStart(json.nightStart);
+          if (json.currentPeriod) actions.setCurrentPeriod(json.currentPeriod as any);
 
           if (!mainStore.plugins.length) {
             actions.setPlugins(json.plugins);
@@ -100,6 +113,10 @@ export const StoreProvider = (props?: { value?: Store; children?: JSX.Element })
             actions.setLeds(json.data);
           }
         });
+        break;
+      case "animation-frames":
+        // Bubble up to pages that care (e.g., Creator) without coupling to store
+        window.dispatchEvent(new CustomEvent("animation-frames", { detail: json }));
         break;
     }
   });

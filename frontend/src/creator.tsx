@@ -31,6 +31,20 @@ export const Creator: Component = () => {
     return [screen, setScreen] as const;
   };
 
+// Expand a 32-byte frame (16 rows, 2 bytes per row) into 256 bits (0/1)
+const bytes32ToBits256 = (bytes: number[]) => {
+  const bits = new Array(256).fill(0);
+  for (let y = 0; y < 16; y++) {
+    const left = bytes[y * 2] | 0;
+    const right = bytes[y * 2 + 1] | 0;
+    // x 0..7 from left byte (bit 7..0)
+    for (let x = 0; x < 8; x++) bits[y * 16 + x] = (left >> (7 - x)) & 1;
+    // x 8..15 from right byte (bit 7..0)
+    for (let x = 8; x < 16; x++) bits[y * 16 + x] = (right >> (15 - x)) & 1;
+  }
+  return bits;
+};
+
   const scrollToEnd = () => {
     if (ref) {
       setTimeout(() => {
@@ -118,6 +132,8 @@ if (size > 0)
     count++;
     if (count >= size)
     {
+
+
         count = 0;
     }
     delay(400);
@@ -153,6 +169,8 @@ if (size > 0)
       }
     };
     run();
+
+
     const newIntervalId = setInterval(run, 400) as unknown as number;
     setIntervalId(newIntervalId);
 
@@ -161,6 +179,29 @@ if (size > 0)
       setIntervalId(0);
       scrollToEnd();
     };
+  });
+
+  // Request frames from device when Animation plugin is active
+  createEffect(() => {
+    if (isAnimationPluginActive() && screenSignals().length === 0) {
+      actions.send(JSON.stringify({ event: "get-animation" }));
+    }
+  });
+
+  // Listen for incoming frames and populate editor
+  createEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { screens: number; data: number[][] };
+      if (!detail || !detail.data) return;
+      const frames = detail.data as number[][];
+      const signals: ReturnType<typeof createSignal<number[]>>[] = [] as any;
+      for (const frame of frames) {
+        signals.push(createNewScreen(bytes32ToBits256(frame)) as any);
+      }
+      setScreenSignals(signals as any);
+    };
+    window.addEventListener("animation-frames", handler);
+    return () => window.removeEventListener("animation-frames", handler);
   });
 
   return (
@@ -182,6 +223,8 @@ if (size > 0)
                   </div>
                 }
               >
+
+
                 <For each={screenSignals()}>
                   {([screen, setScreen], index) => (
                     <div class="snap-center">
